@@ -1,77 +1,55 @@
 High-Precision Face Recognition System
 
-A production-grade facial recognition pipeline optimized for Windows + NVIDIA GPUs
+A production-grade facial recognition pipeline optimized for Windows + NVIDIA GPUs.
 
-This project implements a hybrid, high-accuracy face recognition system using:
+This project implements a hybrid facial recognition system using:
+SCRFD 10G (ONNX, CPU) for robust, high-accuracy face detection
+IResNet100 (ArcFace Teacher Model, PyTorch GPU) for industry-grade recognition
+Encrypted FAISS database for secure and fast vector search
+Multi-angle enrollment (Stacking) for real-world reliability
+The system is engineered to avoid Windows GPU driver issues, handle noisy datasets, and achieve state-of-the-art performance.
 
-SCRFD 10G (ONNX, CPU) → Ultra-robust face detection
+Key Features
+Production-Grade Accuracy
+Uses the ArcFace Teacher model (ResNet100), achieving significantly higher accuracy than mobile face-recognition models.
+Hybrid Runtime
+Detection runs on ONNXRuntime CPU
+Recognition runs on PyTorch GPU
+This avoids Windows ONNXRuntime-GPU DLL issues entirely.
+Noise-Resistant Dataset Cleaning
+Filters out false detections (logos, shirts, backgrounds)
+Rejects blurry frames
+Handles multiple faces safely
+Secure Enrollment System
+Multi-angle embeddings averaged for robustness
+Embeddings encrypted using Fernet (AES)
+SQLite + FAISS backend for fast, secure recognition
+Real-Time Recognition
+FAISS IndexFlatIP returns nearest matches in milliseconds
+High FPS detection + recognition pipeline
 
-IResNet100 (ArcFace Teacher Model, PyTorch GPU) → Commercial-level face recognition
-
-Encrypted FAISS database → Fast + secure vector search
-
-Smart multi-angle enrollment ("Stacking") → 99% accuracy in real-world scenarios
-
-It was engineered specifically to overcome Windows GPU issues, noisy datasets, and real-world performance constraints.
-
-🚀 Key Features
-✔ Production-Grade Accuracy
-
-Uses the Teacher ResNet100 ArcFace model, not a lightweight model—this is the same architecture used in commercial systems.
-
-✔ Hybrid Runtime (No CUDA DLL Errors)
-
-Detection → ONNXRuntime CPU
-
-Recognition → PyTorch CUDA (GPU)
-This eliminates Windows’ infamous cublasLt64_12.dll and onnxruntime-gpu failures.
-
-✔ Smart Dataset Cleaning
-
-Filters out background faces, logos, patterns
-
-Rejects blurry or low-quality samples
-
-Handles multi-face images safely
-
-✔ Strong Enrollment System
-
-Capture 5–10 angles
-
-Automatic vector averaging
-
-Encrypted embedding storage using Fernet AES
-
-✔ Real-Time Recognition
-
-Uses high-performance FAISS IndexFlatIP
-
-Handles multiple frames per second
-
-Robust under varying lighting
-
-📂 Project Structure
+Project Structure
 face_recognition_project/
 │
 ├── checkpoints/
-│   ├── scrfd_10g_bnkps.onnx        # Detector
-│   └── teacher_resnet100.pth       # Recognition model
+│   ├── scrfd_10g_bnkps.onnx        # Detection model
+│   └── teacher_resnet100.pth       # Recognition model (ArcFace)
 │
 ├── dataset/
-│   ├── raw/                        # Raw images per person
-│   └── aligned/                    # Auto-generated aligned crops
+│   ├── raw/                        # Raw user images
+│   └── aligned/                    # Auto-generated aligned faces
 │
-├── config.py                       # System settings
+├── config.py                       # System configuration
 ├── detector_scrfd.py               # ONNX detection engine
 ├── align_face.py                   # Face alignment logic
-├── align_dataset.py                # Batch dataset preprocessing
+├── align_dataset.py                # Batch alignment script
 ├── recognizer.py                   # PyTorch inference model
-├── enrollment_system.py            # Secure DB + FAISS search
-├── enroll_from_folder.py           # Batch enrollment
+├── enrollment_system.py            # Database + encryption
+├── enroll_from_folder.py           # Batch enrollment script
 ├── test_webcam.py                  # Live recognition
 └── main.py                         # All-in-one launcher
 
-🛠 Installation
+Installation
 1. Create Environment
 conda create -n dl_env python=3.10 -y
 conda activate dl_env
@@ -83,38 +61,36 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 pip install numpy==1.26.4 opencv-python==4.8.1.78 onnx onnxruntime \
 faiss-cpu pillow flask sqlalchemy cryptography tqdm
 
-📥 Download and Place Models
+Download Required Models
 
-Place the following inside checkpoints/:
+Place these inside: checkpoints/
 
 File	Description
-scrfd_10g_bnkps.onnx	High-accuracy SCRFD detector
+scrfd_10g_bnkps.onnx	SCRFD 10G face detector
 teacher_resnet100.pth	ArcFace ResNet100 teacher model
 
-If your file is named ms1mv3_r100.pth, rename it to:
+Rename your downloaded ArcFace model to:
 teacher_resnet100.pth
 
-▶️ How to Use
-Option A — All-in-One Launcher
+Usage
+Option A: All-in-One Launcher (Recommended)
 python main.py
 
-
-This provides a full menu for:
-
+Provides a menu for:
 Aligning dataset
-
 Enrolling new users
-
 Running live recognition
 
-Option B — Manual Workflow
-1. Prepare Dataset
-dataset/raw/
-    John_Doe/
-        img1.jpg
-        img2.jpg
+Option B: Manual Operation
+1. Add User Images
 
-2. Align Faces
+Place images here:
+
+dataset/raw/John/
+    img1.jpg
+    img2.jpg
+
+2. Align Images
 python align_dataset.py
 
 3. Enroll Users
@@ -123,88 +99,59 @@ python enroll_from_folder.py
 4. Run Live Recognition
 python test_webcam.py
 
-
-Press keys during webcam:
-
+Keyboard Controls in Webcam Mode
 Key	Action
-E	Add current face to stack
-S	Save stack → Create/Update user
+E	Add current face to embedding stack
+S	Save stack as a new user
 C	Clear stack
 Q	Quit
-⚙️ Configuration
+Configuration Options
 
-All tuning options are inside config.py.
+Located in config.py.
 
-Setting	Default	Purpose
-REC_THRESHOLD	0.65	Recognition strictness (raise to block lookalikes)
+Setting	Default	Description
+REC_THRESHOLD	0.65	Recognition strictness threshold
 CONF_THRESHOLD	0.50	Detection confidence
-MIN_FACE_SIZE	(60, 60)	Ignore small/false faces
-ALIGN_SIZE	(112, 112)	Standard ArcFace input
-🧪 Troubleshooting
-Model Not Found Error
+MIN_FACE_SIZE	(60,60)	Ignore tiny faces/noise
+ALIGN_SIZE	(112,112)	Standard ArcFace alignment size
+Troubleshooting
+Not Recognizing a User
 
-Rename your model:
+Cause: Insufficient enrollment samples.
 
-teacher_resnet100.pth
-
-Detector Returns No Faces
-
-Try:
-
-Increase brightness
-
-Lower detection threshold in config.py:
-
-CONF_THRESHOLD = 0.35
-
-Recognizer says "Unknown"
-
-Use Enrollment Stacking:
-
+Solution:
+Use multi-angle stacking:
 Look straight → press E
+Look left → press E
+Look right → press E
+Tilt up/down → press E
+Press S to save
+Detector Not Picking Faces
+Lower confidence threshold in config:
+CONF_THRESHOLD = 0.35
+Teacher Model Not Found
 
-Turn left → E
+Ensure file:
+checkpoints/teacher_resnet100.pth
 
-Turn right → E
+Security Considerations
+No raw face images stored in database
+All embeddings encrypted using Fernet
+FAISS index stores only normalized vectors
+SQLite database stores encrypted binary blobs
+This ensures compliance with privacy and data protection standards.
 
-Tilt up/down → E
+Performance Benchmarks
+Component	Speed	Implementation
+Detection	30–60 FPS	ONNXRuntime CPU
+Recognition	1000+ vectors/ms	PyTorch CUDA
+Searching	<1 ms	FAISS FlatIP
+Applications
 
-Press S → Save
-
-DLL Errors?
-
-This system avoids them by design.
-Ensure you did NOT install onnxruntime-gpu.
-
-🔒 Security
-
-Your system never stores images, only encrypted vectors:
-
-FAISS index → fast nearest-neighbor search
-
-Fernet → AES-level encryption for embeddings
-
-SQLite → simple, portable, secure
-
-No raw biometric data is stored.
-
-📈 Performance Benchmarks
-Component	Speed	Engine
-Detection	30–60 FPS	ONNX (CPU)
-Recognition	1000+ vectors/ms	GPU (PyTorch)
-Search	sub-millisecond	FAISS FlatIP
-🧩 Use Cases
-
+This system can be used for:
 Employee attendance
-
-Access control systems
-
-Smart classroom attendance
-
-Secure login
-
-Retail customer analytics
-
-Elderly care monitoring
-
-Visitor tracking
+Access control
+Visitor management
+Classroom attendance automation
+Retail analytics
+Smart home authentication
